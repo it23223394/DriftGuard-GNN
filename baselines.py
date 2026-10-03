@@ -7,7 +7,8 @@ separately (inductive). Nothing here touches the test split before final scoring
 
 Decisions to state in the methodology:
   * GNN graphs are symmetrised (UNDIRECTED = True).
-  * rf_local uses only the 93 local features (no pre-aggregated ones).
+  * *_local models use only the 93 local features (no pre-aggregated ones), so
+    gcn_local vs rf_local isolates whether graph structure helps.
 """
 
 import numpy as np
@@ -15,7 +16,7 @@ from protocol import set_seed, N_LOCAL
 
 UNDIRECTED = True
 SKLEARN_MODELS = ["rf_all", "rf_local", "xgb_all"]
-GNN_MODELS = ["gcn", "sage", "gat"]
+GNN_MODELS = ["gcn", "sage", "gat", "gcn_local", "sage_local", "gat_local"]
 
 
 def _xy(split, n_feat=None):
@@ -66,9 +67,10 @@ def make_gnn(kind, in_dim, hidden=64, dropout=0.5):
     return Net()
 
 
-def _graph(split, device):
+def _graph(split, device, n_feat=None):
     import torch
-    x = torch.tensor(split["x"], dtype=torch.float32, device=device)
+    x_np = split["x"] if n_feat is None else split["x"][:, :n_feat]
+    x = torch.tensor(x_np, dtype=torch.float32, device=device)
     ei = torch.tensor(split["edge_index"], dtype=torch.long, device=device)
     if UNDIRECTED:
         ei = torch.cat([ei, ei.flip(0)], dim=1)
@@ -77,12 +79,14 @@ def _graph(split, device):
     return x, ei, y, m
 
 
-def fit_gnn(kind, splits, seed, epochs=200, patience=30, lr=0.01):
+def fit_gnn(name, splits, seed, epochs=200, patience=30, lr=0.01):
     import torch
     from sklearn.metrics import average_precision_score
     set_seed(seed)
+    kind = name.replace("_local", "")
+    n_feat = N_LOCAL if name.endswith("_local") else None
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    g = {k: _graph(splits[k], device) for k in ("fit", "val", "test")}
+    g = {k: _graph(splits[k], device, n_feat) for k in ("fit", "val", "test")}
     xf, eif, yf, mf = g["fit"]
     model = make_gnn(kind, xf.shape[1]).to(device)
     opt = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)
@@ -98,8 +102,8 @@ def fit_gnn(kind, splits, seed, epochs=200, patience=30, lr=0.01):
             p = torch.softmax(model(x, ei), dim=1)[:, 1]
         return p[m].cpu().numpy(), y[m].cpu().numpy()
 
-    best, bad, best_state = -1.0, 0, None
-    for _ in range(epochs):
+    best, bad, best_state, best_ep = -1.0, 0, None, 0
+    for ep in range(epochs):
         model.train()
         opt.zero_grad()
         lossf(model(xf, eif)[mf], yf[mf]).backward()
@@ -107,13 +111,14 @@ def fit_gnn(kind, splits, seed, epochs=200, patience=30, lr=0.01):
         pv, yv = probs("val")
         score = average_precision_score(yv, pv)
         if score > best:
-            best, bad = score, 0
+            best, bad, best_ep = score, 0, ep
             best_state = {k: v.detach().clone() for k, v in model.state_dict().items()}
         else:
             bad += 1
             if bad >= patience:
                 break
     model.load_state_dict(best_state)
+    model.best_epoch = best_ep
     return model, {"val": probs("val")[0], "test": probs("test")[0]}
 
 

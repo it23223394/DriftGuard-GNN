@@ -59,8 +59,8 @@ def main():
                     frames.append(df)
                     if policy == "val_f1" and s == "test":
                         pooled = df[df.timestep == -1].iloc[0]
-            print(f"[seed {seed}] {name:9s} thr={thr_val:.2f}  test pooled F1={pooled.f1:.3f} "
-                  f"AUPRC={pooled.auprc:.3f}")
+            print(f"[seed {seed}] {name:11s} thr={thr_val:.2f}  test pooled F1={pooled.f1:.3f} "
+                  f"AUPRC={pooled.auprc:.3f}  best_epoch={getattr(model, 'best_epoch', '-')}")
 
     results = pd.concat(frames, ignore_index=True)
     results.to_csv(os.path.join(a.out, "baselines_per_timestep.csv"), index=False)

@@ -54,7 +54,7 @@ def summarize(results, split="test"):
                 .agg(["mean", "std"]).round(3))
 
     t = results[(results["split"] == split) & (results["timestep"] > 0)].copy()
-    t["window"] = np.where(t["timestep"] <= 40, "f1_t35_40", "f1_t41_49")
+    t["window"] = np.where(t["timestep"] <= 42, "f1_t35_42", "f1_t43_49")
     macro = (t.groupby(["model", "policy", "seed", "window"])["f1"].mean()   # NaNs skipped
               .groupby(["model", "policy", "window"]).agg(["mean", "std"]).round(3)
               .unstack("window"))
