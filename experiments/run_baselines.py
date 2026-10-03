@@ -30,7 +30,7 @@ def main():
     ap.add_argument("--out", default="results")
     ap.add_argument("--ckpt", default="checkpoints")
     ap.add_argument("--no-ckpt", action="store_true")
-    ap.add_argument("--epochs", type=int, default=200)
+    ap.add_argument("--epochs", type=int, default=300)
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     os.makedirs(a.ckpt, exist_ok=True)

@@ -79,7 +79,7 @@ def _graph(split, device, n_feat=None):
     return x, ei, y, m
 
 
-def fit_gnn(name, splits, seed, epochs=200, patience=30, lr=0.01):
+def fit_gnn(name, splits, seed, epochs=300, patience=50, lr=0.01, wd=0.0):
     import torch
     from sklearn.metrics import average_precision_score
     set_seed(seed)
@@ -89,7 +89,7 @@ def fit_gnn(name, splits, seed, epochs=200, patience=30, lr=0.01):
     g = {k: _graph(splits[k], device, n_feat) for k in ("fit", "val", "test")}
     xf, eif, yf, mf = g["fit"]
     model = make_gnn(kind, xf.shape[1]).to(device)
-    opt = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)
+    opt = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=wd)
     n_pos = (yf[mf] == 1).sum().item()
     n_neg = (yf[mf] == 0).sum().item()
     lossf = torch.nn.CrossEntropyLoss(
@@ -122,7 +122,7 @@ def fit_gnn(name, splits, seed, epochs=200, patience=30, lr=0.01):
     return model, {"val": probs("val")[0], "test": probs("test")[0]}
 
 
-def fit(name, splits, seed, epochs=200):
+def fit(name, splits, seed, epochs=300):
     if name in SKLEARN_MODELS:
         return fit_sklearn(name, splits, seed)
     return fit_gnn(name, splits, seed, epochs=epochs)
