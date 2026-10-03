@@ -79,7 +79,7 @@ def _graph(split, device, n_feat=None):
     return x, ei, y, m
 
 
-def fit_gnn(name, splits, seed, epochs=300, patience=50, lr=0.01, wd=0.0):
+def fit_gnn(name, splits, seed, epochs=600, patience=50, lr=0.01, wd=0.0):
     import torch
     from sklearn.metrics import average_precision_score
     set_seed(seed)
@@ -122,7 +122,7 @@ def fit_gnn(name, splits, seed, epochs=300, patience=50, lr=0.01, wd=0.0):
     return model, {"val": probs("val")[0], "test": probs("test")[0]}
 
 
-def fit(name, splits, seed, epochs=300):
+def fit(name, splits, seed, epochs=600):
     if name in SKLEARN_MODELS:
         return fit_sklearn(name, splits, seed)
     return fit_gnn(name, splits, seed, epochs=epochs)
