@@ -10,7 +10,7 @@ Each model is scored with two threshold policies: val_f1 (tuned on val) and fixe
 import argparse
 import os
 import sys
-
+import numpy as np
 import pandas as pd
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -35,6 +35,7 @@ def main():
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     os.makedirs(a.ckpt, exist_ok=True)
+    os.makedirs(os.path.join(a.out, "preds"), exist_ok=True)
 
     splits, _ = build_protocol(a.data)
     lab = {s: splits[s]["labelled"] for s in ("val", "test")}
@@ -48,6 +49,11 @@ def main():
             model, probs = baselines.fit(name, splits, seed, epochs=a.epochs)
             if not a.no_ckpt:
                 baselines.save(name, model, os.path.join(a.ckpt, f"{name}_seed{seed}"))
+            
+            np.savez_compressed(
+                os.path.join(a.out, "preds", f"{name}_seed{seed}.npz"),
+                y_val=y["val"], p_val=probs["val"], t_val=ts["val"],
+                y_test=y["test"], p_test=probs["test"], t_test=ts["test"])
             thr_val = pick_threshold(y["val"], probs["val"])
             for policy, thr in (("val_f1", thr_val), ("fixed_0.5", 0.5)):
                 for s in ("val", "test"):
